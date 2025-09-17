@@ -24,7 +24,6 @@ def lichess_best_move(fen):
         return None, None
 
 def openai_commentary(fen):
-    # Uses openai>=1.0.0 interface
     client = openai.OpenAI(api_key=st.secrets["openai_api_key"])
     prompt = (
         f"This is a chess position in FEN notation: '{fen}'. "
@@ -33,7 +32,7 @@ def openai_commentary(fen):
     )
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",  # Use this model unless you have gpt-4 access!
             messages=[{"role": "user", "content": prompt}],
             max_tokens=250,
             temperature=0.7,
