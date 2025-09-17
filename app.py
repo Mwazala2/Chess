@@ -3,16 +3,15 @@ import chess
 import chess.svg
 import base64
 import requests
+import openai
 from chess_engine import ChessGame
 
 def render_svg(svg):
-    """Render SVG as a chess board in Streamlit."""
     b64 = base64.b64encode(svg.encode('utf-8')).decode()
     html = f'<img src="data:image/svg+xml;base64,{b64}" style="width: 400px; border:2px solid #444; border-radius:10px;"/>'
     st.markdown(html, unsafe_allow_html=True)
 
 def lichess_best_move(fen):
-    """Query the Lichess Cloud Evaluation API for the best move in the given FEN position."""
     api_key = st.secrets["lichess_api_key"]
     url = "https://lichess.org/api/cloud-eval"
     params = {"fen": fen, "multiPv": 1}
@@ -23,6 +22,24 @@ def lichess_best_move(fen):
         return data["pvs"][0]["moves"].split()[0], data["pvs"][0].get("cp", None)
     else:
         return None, None
+
+def openai_commentary(fen):
+    openai.api_key = st.secrets["openai_api_key"]
+    prompt = (
+        f"This is a chess position in FEN notation: '{fen}'. "
+        "Please provide a brief analysis and suggest a strong move for the side to move. "
+        "Explain the reasoning in simple terms for a chess learner."
+    )
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=250,
+            temperature=0.7,
+        )
+        return response["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"OpenAI error: {e}"
 
 st.set_page_config(page_title="Interactive Chess App", layout="centered")
 st.title("♟️ Interactive Chess App")
@@ -46,7 +63,6 @@ if "ai_engine_source" not in st.session_state:
 
 game = st.session_state.game
 
-# Sidebar: AI Configuration
 st.sidebar.markdown("## AI Configuration")
 ai_difficulty = st.sidebar.selectbox("AI Difficulty", ["Easy", "Intermediate", "Hard"], index=["Easy","Intermediate","Hard"].index(st.session_state.ai_difficulty))
 st.session_state.ai_difficulty = ai_difficulty
@@ -93,6 +109,12 @@ with col1:
         else:
             st.error("Could not retrieve cloud analysis.")
 
+    # OpenAI commentary button and result
+    if st.button("Get OpenAI Commentary on Position"):
+        with st.spinner("Querying OpenAI..."):
+            commentary = openai_commentary(fen)
+        st.info(commentary)
+
     if game.is_game_over():
         st.markdown(f"### Game Over: {game.get_result()}")
 
@@ -128,7 +150,6 @@ with col2:
     st.write("#### Last Move Explanation:")
     st.info(st.session_state.move_explanation)
 
-# Sidebar move list, formatted for PGN-style display
 st.sidebar.markdown("## Move History")
 if st.session_state.history:
     move_list = ""
@@ -140,5 +161,3 @@ if st.session_state.history:
     st.sidebar.text_area("PGN", move_list, height=200)
 else:
     st.sidebar.write("No moves yet.")
-
-# (Optional) Future: UI for OpenAI commentary could go here
