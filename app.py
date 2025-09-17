@@ -46,7 +46,7 @@ if "ai_engine_source" not in st.session_state:
 
 game = st.session_state.game
 
-# UI for selecting AI difficulty and engine
+# Sidebar: AI Configuration
 st.sidebar.markdown("## AI Configuration")
 ai_difficulty = st.sidebar.selectbox("AI Difficulty", ["Easy", "Intermediate", "Hard"], index=["Easy","Intermediate","Hard"].index(st.session_state.ai_difficulty))
 st.session_state.ai_difficulty = ai_difficulty
