@@ -24,20 +24,21 @@ def lichess_best_move(fen):
         return None, None
 
 def openai_commentary(fen):
-    openai.api_key = st.secrets["openai_api_key"]
+    # Uses openai>=1.0.0 interface
+    client = openai.OpenAI(api_key=st.secrets["openai_api_key"])
     prompt = (
         f"This is a chess position in FEN notation: '{fen}'. "
         "Please provide a brief analysis and suggest a strong move for the side to move. "
         "Explain the reasoning in simple terms for a chess learner."
     )
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=250,
             temperature=0.7,
         )
-        return response["choices"][0]["message"]["content"]
+        return response.choices[0].message.content
     except Exception as e:
         return f"OpenAI error: {e}"
 
@@ -47,7 +48,7 @@ st.title("♟️ Interactive Chess App")
 with st.expander("How to Play", expanded=False):
     st.markdown(
         "Select your move from the dropdown or enter it manually (UCI format, e.g., e2e4). "
-        "You can also get the best move suggestion from Lichess Cloud Stockfish engine by clicking the button."
+        "You can also get best move suggestions and commentary from AI engines."
     )
 
 if "game" not in st.session_state:
@@ -150,6 +151,7 @@ with col2:
     st.write("#### Last Move Explanation:")
     st.info(st.session_state.move_explanation)
 
+# Sidebar move list, formatted for PGN-style display
 st.sidebar.markdown("## Move History")
 if st.session_state.history:
     move_list = ""
