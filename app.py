@@ -46,8 +46,8 @@ st.title("♟️ Interactive Chess App")
 
 with st.expander("How to Play", expanded=False):
     st.markdown(
-        "Select your move from the dropdown or enter it manually (UCI format, e.g., e2e4). "
-        "You can also get best move suggestions and commentary from AI engines."
+        "Select your move from the dropdown or enter it manually (UCI format: e2e4, g1f3, e7e8q for promotion)."
+        "\nOnly legal moves are accepted. Commentary and best move suggestions are available."
     )
 
 if "game" not in st.session_state:
@@ -83,13 +83,16 @@ with col1:
     st.write("#### Move Selection")
     legal_moves = [move.uci() for move in game.board.legal_moves]
     move_input = st.selectbox("Select your move", [""] + legal_moves)
+    st.write("Enter moves in UCI format (e.g., e2e4, g1f3, e7e8q for promotion)")
     manual_move = st.text_input("Or enter move (UCI):", "")
 
-    move_submitted = st.button("Make Move")
+    def is_valid_uci(move):
+        return move in legal_moves
 
+    move_submitted = st.button("Make Move")
     if move_submitted:
         selected_move = manual_move.strip() if manual_move.strip() else move_input
-        if selected_move and selected_move in legal_moves:
+        if selected_move and is_valid_uci(selected_move):
             success, explanation = game.push_move(selected_move)
             if success:
                 st.session_state.history.append(selected_move)
@@ -97,7 +100,7 @@ with col1:
             else:
                 st.warning(explanation)
         else:
-            st.warning("Please select or enter a valid legal move.")
+            st.warning("❌ Invalid or illegal move. Please use UCI format and only play legal moves.")
 
     fen = game.board.fen()
     if st.button("Get Best Move (Lichess AI)"):
@@ -109,7 +112,6 @@ with col1:
         else:
             st.error("Could not retrieve cloud analysis.")
 
-    # OpenAI commentary button and result
     if st.button("Get OpenAI Commentary on Position"):
         with st.spinner("Querying OpenAI..."):
             commentary = openai_commentary(fen)
@@ -150,7 +152,6 @@ with col2:
     st.write("#### Last Move Explanation:")
     st.info(st.session_state.move_explanation)
 
-# Sidebar move list, formatted for PGN-style display
 st.sidebar.markdown("## Move History")
 if st.session_state.history:
     move_list = ""
