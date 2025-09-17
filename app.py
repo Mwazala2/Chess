@@ -39,8 +39,23 @@ if "history" not in st.session_state:
     st.session_state.history = []
 if "move_explanation" not in st.session_state:
     st.session_state.move_explanation = ""
+if "ai_difficulty" not in st.session_state:
+    st.session_state.ai_difficulty = "Easy"
+if "ai_engine_source" not in st.session_state:
+    st.session_state.ai_engine_source = "Local Stockfish"
 
 game = st.session_state.game
+
+# UI for selecting AI difficulty and engine
+st.sidebar.markdown("## AI Configuration")
+ai_difficulty = st.sidebar.selectbox("AI Difficulty", ["Easy", "Intermediate", "Hard"], index=["Easy","Intermediate","Hard"].index(st.session_state.ai_difficulty))
+st.session_state.ai_difficulty = ai_difficulty
+
+if ai_difficulty == "Hard":
+    ai_engine_source = st.sidebar.selectbox("Engine Source", ["Local Stockfish", "Lichess Cloud"], index=["Local Stockfish","Lichess Cloud"].index(st.session_state.ai_engine_source))
+    st.session_state.ai_engine_source = ai_engine_source
+else:
+    st.session_state.ai_engine_source = "Local Stockfish"
 
 col1, col2 = st.columns([2, 1])
 
@@ -85,9 +100,26 @@ with col2:
     mode = st.radio("Mode", ["Human vs Human", "Human vs AI"])
     if mode == "Human vs AI" and not game.is_game_over() and len(legal_moves) > 0:
         if st.button("AI Move"):
-            move, explanation = game.ai_move(level='random')
-            st.session_state.history.append(move)
-            st.session_state.move_explanation = explanation
+            level = st.session_state.ai_difficulty.lower()
+            engine_source = "local" if st.session_state.ai_engine_source == "Local Stockfish" else "lichess"
+            if level == "hard" and engine_source == "lichess":
+                with st.spinner("Querying Lichess Cloud Engine..."):
+                    best_move, eval_cp = lichess_best_move(game.board.fen())
+                if best_move:
+                    game.push_move(best_move)
+                    st.session_state.history.append(best_move)
+                    eval_text = f"Evaluation: {'+' if eval_cp and eval_cp >= 0 else ''}{eval_cp} cp" if eval_cp is not None else ""
+                    st.session_state.move_explanation = f"Lichess Cloud recommends: {best_move}. {eval_text}"
+                else:
+                    st.error("Could not retrieve cloud analysis.")
+            else:
+                move, explanation = game.ai_move(level=level, engine_source=engine_source)
+                if move:
+                    st.session_state.history.append(move)
+                    st.session_state.move_explanation = explanation
+                else:
+                    st.warning(explanation)
+
     if st.button("Restart Game"):
         st.session_state.game = ChessGame()
         st.session_state.history = []
@@ -108,3 +140,5 @@ if st.session_state.history:
     st.sidebar.text_area("PGN", move_list, height=200)
 else:
     st.sidebar.write("No moves yet.")
+
+# (Optional) Future: UI for OpenAI commentary could go here
